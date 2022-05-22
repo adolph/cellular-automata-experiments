@@ -1,23 +1,54 @@
 # starting line
-seed=$(echo "obase=2;ibase=10;$RANDOM" | bc);
-echo -n "\$seed: $seed, ";
-echo "obase=10;ibase=2;$seed" | bc;
-echo "\${#seed}: ${#seed}";
+input=$(echo "obase=2;ibase=10;$RANDOM" | bc);
+input=$(echo "obase=2;ibase=10;3716" | bc);
+echo -n "\$input: $input, ";
+echo "obase=10;ibase=2;$input" | bc;
+echo "\${#input}: ${#input}";
 
 # rule to use
-rule=$(echo "obase=2;ibase=10;30" | bc); 
-echo "\$rule: $rule";
-echo "\${#rule}: ${#rule}";
+rule=30;
+echo "Base 10 Rule: $rule";
+rule=$(echo "obase=2;ibase=10;$rule" | bc); 
+# left zero pad rule to be 8 bits wide
+for i in $(seq $(( 8 - ${#rule}))); do rule="0${rule}"; done
+echo "Binary \$rule: $rule";
 
-#find bits for p[revious], t[his[ and n[ext] from seed
-for i in $(seq 0 $(( ${#seed} - 1))); do 
-	echo -n "$i :: ${seed:$i:1}"; 
-	t=${seed:$i:1}; 
-	case $i in 
-		0) p=${seed:$(( ${#seed} - 1)):1}; n=${seed:$(( $i + 1 )):1};; 
-		$(( ${#seed} - 1))) p=${seed:$(( $i - 1 )):1}; n=${seed:0:1};; 
-		*) p=${seed:$(( $i - 1 )):1}; n=${seed:$(( $i + 1 )):1};; 
+# return bits for p[revious], t[his[ and n[ext] from input
+function ptn() {
+	local input=$1; 
+	local point=$2;
+	t=${input:$point:1}; 
+	case $point in 
+		0) p=${input:$(( ${#input} - 1)):1}; n=${input:$(( $point + 1 )):1};; 
+		$(( ${#input} - 1))) p=${input:$(( $point - 1 )):1}; n=${input:0:1};; 
+		*) p=${input:$(( $point - 1 )):1}; n=${input:$(( $point + 1 )):1};; 
 	esac; 
-	echo -n " :: $p,$t,$n :: "; 
-	echo "obase=10;ibase=2; $p$t$n" | bc; 
+	echo "$p$t$n";
+}
+
+# return value for position in rule
+function run_rule() {
+	local rule=$1;
+	local position=$2;
+	echo "${rule:$(( 7 - $position )):1}";
+}
+
+function mutate() {
+	local input=$1;
+	local rule=$2;
+	local position="";
+	local i="";
+	local output="";
+	#loop over each bit in input
+	for i in $(seq 0 $(( ${#input} - 1))); do 
+		position=$(echo "obase=10;ibase=2; $(ptn $input $i)" | bc);
+		output="${output}$(run_rule $rule $position)";
+	done
+	echo $output
+}
+
+echo "";
+for i in $(seq 50); do 
+	echo $input;
+	input="$(mutate $input $rule)";
 done
